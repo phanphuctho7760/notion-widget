@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Clickable Text Sound with Duration</title>
+<style>
+  body {
+    font-family: sans-serif;
+    text-align: center;
+    padding: 50px;
+  }
+
+  .clickable-text {
+    font-size: 16px; /* Default font size like Notion */
+    cursor: pointer;
+    background: none;
+    border: none;
+    outline: none;
+    padding: 5px;
+    text-decoration: none;
+    transition: color 0.3s;
+  }
+</style>
+</head>
+<body>
+
+<span id="clickText" class="clickable-text"></span>
+
+<script>
+  // Get URL parameters
+  const params = new URLSearchParams(window.location.search);
+  const textParam = params.get('text') || 'Click Me';
+  const colorParam = params.get('color') || 'black';
+  const hoverColorParam = params.get('hoverColor') || colorParam;
+  const clickedColorParam = params.get('clickedColor') || colorParam;
+  const durationParam = parseFloat(params.get('duration')) || 0; // Default to 0 if not provided
+  const soundParam = params.get('sound') || 'fifths.wav'; // Default to fifths.wav
+
+  // Select text element
+  const clickText = document.getElementById('clickText');
+  clickText.textContent = textParam;
+  clickText.style.color = colorParam;
+
+  // Color change on hover
+  clickText.addEventListener('mouseover', () => {
+    clickText.style.color = hoverColorParam;
+  });
+
+  clickText.addEventListener('mouseout', () => {
+    clickText.style.color = colorParam;
+  });
+
+  // Web Audio API variables
+  let audioContext;
+  let buffer;
+
+  // Load the audio file using Fetch and decode
+  fetch(soundParam)
+    .then(response => {
+      if (!response.ok) throw new Error('Failed to load audio file');
+      return response.arrayBuffer();
+    })
+    .then(arrayBuffer => {
+      audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      return audioContext.decodeAudioData(arrayBuffer);
+    })
+    .then(decodedBuffer => {
+      buffer = decodedBuffer;
+    })
+    .catch(err => {
+      console.error('Error loading audio:', err);
+    });
+
+  // Click event
+  clickText.addEventListener('click', () => {
+    if (!audioContext || !buffer) {
+      console.warn('Audio not loaded yet.');
+      return;
+    }
+
+    // Create buffer source
+    const source = audioContext.createBufferSource();
+    source.buffer = buffer;
+    source.connect(audioContext.destination);
+
+    // Start the audio
+    source.start(0); // Start from the beginning
+
+    // Change text color on click
+    clickText.style.color = clickedColorParam;
+
+    // Stop audio after duration seconds if durationParam is valid and positive
+    if (durationParam > 0) {
+      source.stop(audioContext.currentTime + durationParam);
+    }
+
+    // Reset color after audio stops (if duration is specified)
+    if (durationParam > 0) {
+      setTimeout(() => {
+        clickText.style.color = colorParam;
+      }, durationParam * 1000);
+    }
+  });
+</script>
+
+</body>
+</html>
